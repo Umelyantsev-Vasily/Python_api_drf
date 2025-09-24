@@ -20,9 +20,11 @@ from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 from materials.views import CourseViewSet
+from users.views import PaymentViewSet
 
 router = DefaultRouter()
 router.register(r'courses', CourseViewSet)
+router.register(r'payments', PaymentViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
