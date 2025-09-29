@@ -2,19 +2,41 @@ from rest_framework import serializers
 from .models import Course, Lesson
 
 
-class LessonSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Lesson
-        fields = '__all__'
-
-
 class CourseSerializer(serializers.ModelSerializer):
-    lessons_count = serializers.SerializerMethodField()
-    lessons = LessonSerializer(many=True, read_only=True)
+    owner_email = serializers.EmailField(source='owner.email', read_only=True)
 
     class Meta:
         model = Course
         fields = '__all__'
+        read_only_fields = ('owner',)
 
-    def get_lessons_count(self, obj):
-        return obj.lessons.count()
+    def validate_title(self, value):
+        if len(value) < 3:
+            raise serializers.ValidationError("Название должно содержать минимум 3 символа")
+        return value
+
+    def validate_description(self, value):
+        """Валидация описания"""
+        if value and len(value.strip()) < 10:
+            raise serializers.ValidationError("Описание должно содержать минимум 10 символов")
+        return value
+
+
+class LessonSerializer(serializers.ModelSerializer):
+    owner_email = serializers.EmailField(source='owner.email', read_only=True)
+
+    class Meta:
+        model = Lesson
+        fields = '__all__'
+        read_only_fields = ('owner',)
+
+    def validate_title(self, value):
+        """Валидация названия урока"""
+        if len(value.strip()) < 3:
+            raise serializers.ValidationError("Название должно содержать минимум 3 символа")
+        return value
+
+    def validate_video_link(self, value):
+        if value and 'youtube.com' not in value:
+            raise serializers.ValidationError("Допускаются только ссылки на YouTube")
+        return value

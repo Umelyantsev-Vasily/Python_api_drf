@@ -1,5 +1,4 @@
 from django.contrib import admin
-
 from materials.models import Course, Lesson
 from .models import User, Payment
 from django import forms
