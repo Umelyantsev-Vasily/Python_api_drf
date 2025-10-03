@@ -4,7 +4,7 @@ from materials.views import (
     LessonListAPIView,
     LessonRetrieveAPIView,
     LessonUpdateAPIView,
-    LessonDestroyAPIView
+    LessonDestroyAPIView, SubscriptionAPIView
 )
 
 urlpatterns = [
@@ -13,4 +13,6 @@ urlpatterns = [
     path('<int:pk>/', LessonRetrieveAPIView.as_view(), name='lesson-detail'),
     path('<int:pk>/update/', LessonUpdateAPIView.as_view(), name='lesson-update'),
     path('<int:pk>/delete/', LessonDestroyAPIView.as_view(), name='lesson-delete'),
+    # Добавляем эндпоинт для подписок
+    path('subscription/', SubscriptionAPIView.as_view(), name='subscription'),
 ]
