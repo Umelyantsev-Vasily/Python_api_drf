@@ -5,16 +5,16 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 
-from materials.models import Course, Lesson, Subscription
-from materials.serializers import CourseSerializer, LessonSerializer
+from .models import Course, Lesson, Subscription
+from .serializers import CourseSerializer, LessonSerializer
 from users.permissions import IsModerator, IsOwner, IsOwnerOrModerator
-from materials.paginators import LessonPaginator, CoursePaginator
+from .paginators import MaterialsPaginator
 
 
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
-    pagination_class = CoursePaginator  # добавляем пагинацию
+    pagination_class = MaterialsPaginator  # используем один пагинатор
 
     def get_permissions(self):
         if self.action == 'create':
@@ -51,7 +51,7 @@ class LessonListAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['course']
-    pagination_class = LessonPaginator  # добавляем пагинацию
+    pagination_class = MaterialsPaginator  # используем один пагинатор
 
     def get_queryset(self):
         user = self.request.user
@@ -85,8 +85,11 @@ class SubscriptionAPIView(APIView):
     def post(self, request, *args, **kwargs):
         user = request.user
         course_id = request.data.get('course_id')
-        course_item = get_object_or_404(Course, id=course_id)
 
+        if not course_id:
+            return Response({"error": "course_id обязателен"}, status=status.HTTP_400_BAD_REQUEST)
+
+        course_item = get_object_or_404(Course, id=course_id)
         subs_item = Subscription.objects.filter(user=user, course=course_item)
 
         # Если подписка у пользователя на этот курс есть - удаляем ее

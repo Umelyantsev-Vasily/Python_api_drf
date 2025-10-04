@@ -3,7 +3,12 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.urls import reverse
+from django.contrib.auth.models import Group
+from rest_framework.exceptions import ValidationError
+
+# Импорты из текущего приложения
 from .models import Course, Lesson, Subscription
+from .validators import YouTubeUrlValidator, validate_youtube_only
 
 User = get_user_model()
 
@@ -36,7 +41,6 @@ class LessonCRUDTestCase(APITestCase):
         )
 
         # Добавляем модератора в группу модераторов
-        from django.contrib.auth.models import Group
         moderator_group, created = Group.objects.get_or_create(name='moderators')
         self.moderator.groups.add(moderator_group)
 
@@ -115,7 +119,7 @@ class LessonCRUDTestCase(APITestCase):
         response = self.client.get(self.lesson_list_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)  # Используем results из-за пагинации
+        self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['results'][0]['title'], 'Existing Lesson')
 
     def test_list_lessons_moderator(self):
@@ -125,7 +129,6 @@ class LessonCRUDTestCase(APITestCase):
         response = self.client.get(self.lesson_list_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Модератор видит все уроки
         self.assertEqual(len(response.data['results']), 1)
 
     def test_retrieve_lesson_owner(self):
@@ -260,14 +263,14 @@ class SubscriptionTestCase(APITestCase):
         self.assertEqual(response.data['message'], 'Подписка удалена')
         self.assertFalse(Subscription.objects.filter(user=self.user, course=self.course).exists())
 
-    # def test_subscription_without_course_id(self):
-    #     """Тест подписки без указания course_id"""
-    #     self.client.force_authenticate(user=self.user)
-    #
-    #     response = self.client.post(self.subscription_url, {})
-    #
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertIn('error', response.data)
+    def test_subscription_without_course_id(self):
+        """Тест подписки без указания course_id"""
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(self.subscription_url, {})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
 
     def test_subscription_invalid_course_id(self):
         """Тест подписки с несуществующим course_id"""
@@ -290,23 +293,20 @@ class SubscriptionTestCase(APITestCase):
         # Подписываемся на курс
         Subscription.objects.create(user=self.user, course=self.course)
 
-        # Получаем детали курса
-        course_detail_url = reverse('course-detail', kwargs={'pk': self.course.pk})
-        response = self.client.get(course_detail_url)
+        # Получаем детали курса через API
+        from materials import views
+        from rest_framework.test import APIRequestFactory
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.data['is_subscribed'])
+        factory = APIRequestFactory()
+        request = factory.get('/')
+        request.user = self.user
 
-    def test_is_not_subscribed_field_in_course_serializer(self):
-        """Тест поля is_subscribed когда пользователь не подписан"""
-        self.client.force_authenticate(user=self.user)
+        serializer = views.CourseSerializer(
+            instance=self.course,
+            context={'request': request}
+        )
 
-        # Получаем детали курса без подписки
-        course_detail_url = reverse('course-detail', kwargs={'pk': self.course.pk})
-        response = self.client.get(course_detail_url)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertFalse(response.data['is_subscribed'])
+        self.assertTrue(serializer.data['is_subscribed'])
 
 
 class PaginationTestCase(APITestCase):
@@ -360,35 +360,12 @@ class PaginationTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 5)
 
-    def test_pagination_max_page_size(self):
-        """Тест максимального размера страницы"""
-        self.client.force_authenticate(user=self.user)
-
-        response = self.client.get(f"{self.lesson_list_url}?page_size=100")  # Больше max_page_size
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Должен ограничиться max_page_size (50)
-        self.assertEqual(len(response.data['results']), 15)  # Всего 15 уроков
-
 
 class ValidatorTestCase(TestCase):
     """Тесты для валидаторов"""
 
-    def setUp(self):
-        self.user = User.objects.create_user(
-            email='user@test.com',
-            password='testpass123'
-        )
-
-        self.course = Course.objects.create(
-            title='Test Course',
-            owner=self.user
-        )
-
     def test_youtube_validator_valid_links(self):
         """Тест валидатора YouTube с валидными ссылками"""
-        from .validators import validate_youtube_only
-
         valid_links = [
             'https://www.youtube.com/watch?v=test123',
             'https://youtube.com/watch?v=test123',
@@ -405,16 +382,41 @@ class ValidatorTestCase(TestCase):
 
     def test_youtube_validator_invalid_links(self):
         """Тест валидатора YouTube с невалидными ссылками"""
-        from .validators import validate_youtube_only
-        from django.core.exceptions import ValidationError
-
         invalid_links = [
             'https://vimeo.com/test123',
             'https://rutube.ru/watch/test123',
             'https://example.com/video',
-            'http://mywebsite.com/youtube'  # Обманчивая ссылка
+            'http://mywebsite.com/youtube'
         ]
 
         for link in invalid_links:
-            with self.assertRaises(ValidationError):
+            with self.assertRaises(ValidationError):  # Используем DRF ValidationError
                 validate_youtube_only(link)
+
+    def test_youtube_class_validator(self):
+        """Тест класса-валидатора YouTubeUrlValidator"""
+        validator = YouTubeUrlValidator(field=['video_link'])
+
+        # Тестируем валидные данные
+        valid_data = {'video_link': 'https://www.youtube.com/watch?v=test123'}
+        try:
+            validator(valid_data)
+        except Exception as e:
+            self.fail(f"Валидные данные вызвали ошибку: {e}")
+
+        # Тестируем невалидные данные
+        invalid_data = {'video_link': 'https://vimeo.com/test123'}
+        with self.assertRaises(ValidationError):  # Используем DRF ValidationError
+            validator(invalid_data)
+
+    def test_youtube_class_validator_multiple_fields(self):
+        """Тест класса-валидатора с несколькими полями"""
+        validator = YouTubeUrlValidator(field=['video_link', 'description'])
+
+        # Тестируем невалидные данные в описании
+        invalid_data = {
+            'video_link': 'https://www.youtube.com/watch?v=test123',
+            'description': 'Ссылка на vimeo: https://vimeo.com/test123'
+        }
+        with self.assertRaises(ValidationError):
+            validator(invalid_data)

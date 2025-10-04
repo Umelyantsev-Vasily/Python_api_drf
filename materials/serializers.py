@@ -1,16 +1,20 @@
 from rest_framework import serializers
-from .models import Course, Lesson, Subscription  # добавляем Subscription
-from .validators import validate_youtube_only
+from .models import Course, Lesson, Subscription
+from .validators import YouTubeUrlValidator, validate_youtube_only
 
 
 class CourseSerializer(serializers.ModelSerializer):
     owner_email = serializers.EmailField(source='owner.email', read_only=True)
-    is_subscribed = serializers.SerializerMethodField()  # добавляем поле подписки
+    is_subscribed = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
         fields = '__all__'
         read_only_fields = ('owner',)
+        # Добавляем валидатор для проверки ссылок в описании
+        validators = [
+            YouTubeUrlValidator(field=['description'])
+        ]
 
     def get_is_subscribed(self, obj):
         """Проверяет, подписан ли текущий пользователь на курс"""
@@ -38,7 +42,9 @@ class LessonSerializer(serializers.ModelSerializer):
         model = Lesson
         fields = '__all__'
         read_only_fields = ('owner',)
+        # Добавляем оба валидатора
         validators = [
+            YouTubeUrlValidator(field=['video_link', 'description']),
             serializers.UniqueTogetherValidator(
                 queryset=Lesson.objects.all(),
                 fields=['title', 'course'],
@@ -53,14 +59,6 @@ class LessonSerializer(serializers.ModelSerializer):
         return value
 
     def validate_video_link(self, value):
-        """Валидация ссылки на видео"""
-        validate_youtube_only(value)
+        """Валидация ссылки на видео (дополнительная проверка)"""
+        validate_youtube_only(value)  # используем функцию для обратной совместимости
         return value
-
-
-class SubscriptionSerializer(serializers.ModelSerializer):
-    """Сериализатор для подписок"""
-    class Meta:
-        model = Subscription
-        fields = '__all__'
-        read_only_fields = ('user', 'subscribed_at')
