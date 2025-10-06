@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     # Third party apps
     'rest_framework',
     'django_filters',
+    'drf_yasg',
 
     # Local apps
     'users',
@@ -131,7 +132,7 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend'
-    ],
+    ]
 }
 
 SIMPLE_JWT = {
@@ -140,3 +141,32 @@ SIMPLE_JWT = {
 }
 
 AUTH_USER_MODEL = 'users.User'
+
+# Настройки SWAGGER
+SWAGGER_SETTINGS = {
+    'DEFAULT_INFO': 'config.urls.swagger_info',  # путь к информации о API
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header'
+        }
+    },
+    'USE_SESSION_AUTH': False,
+    'JSON_EDITOR': True,
+}
+
+# Настройки Redoc
+REDOC_SETTINGS = {
+    'LAZY_RENDERING': False,
+}
+
+# Stripe settings
+STRIPE_API_KEY = os.getenv('STRIPE_API_KEY', 'your_stripe_secret_key_here')
+STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY', 'your_stripe_publishable_key_here')
+STRIPE_WEBHOOK_SECRET = ''
+
+# Frontend URLs
+FRONTEND_SUCCESS_URL = 'http://localhost:8000/api/payments/success/'
+FRONTEND_CANCEL_URL = 'http://localhost:8000/api/payments/cancel/'
+
