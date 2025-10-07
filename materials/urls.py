@@ -6,7 +6,11 @@ from materials.views import (
     LessonUpdateAPIView,
     LessonDestroyAPIView,
     SubscriptionAPIView,
+    PaymentViewSet,
 )
+
+create_payment_view = PaymentViewSet.as_view({'post': 'create_payment'})
+payment_status_view = PaymentViewSet.as_view({'get': 'status'})
 
 urlpatterns = [
     # Уроки
@@ -20,5 +24,6 @@ urlpatterns = [
     path('subscription/', SubscriptionAPIView.as_view(), name='subscription'),
 
     # Платежи
-
+    path('payments/create_payment/', create_payment_view, name='payment-create-payment'),
+    path('payments/<int:pk>/status/', payment_status_view, name='payment-status'),
 ]

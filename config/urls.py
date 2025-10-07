@@ -22,8 +22,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from users.views import UserViewSet
-from materials.views import CourseViewSet
-from users.views import PaymentViewSet
+from materials.views import CourseViewSet, PaymentViewSet  # ✅ ДОБАВИТЬ PaymentViewSet
 
 from rest_framework import permissions
 from drf_yasg import openapi
@@ -45,9 +44,8 @@ schema_view = get_schema_view(
 
 router = DefaultRouter()
 router.register(r'courses', CourseViewSet)
-router.register(r'user-payments', PaymentViewSet, basename='user-payment')
 router.register(r'users', UserViewSet)
-router.register(r'payments', PaymentViewSet, basename='payment')
+router.register(r'payments', PaymentViewSet, basename='payment')  # ✅ Теперь работает
 
 urlpatterns = [
     path('admin/', admin.site.urls),

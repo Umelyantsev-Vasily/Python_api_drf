@@ -1,14 +1,14 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
+#
+# from .models import Payment
 
-from .models import Payment
 
-
-class PaymentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Payment
-        fields = '__all__'
+# class PaymentSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Payment
+#         fields = '__all__'
 
 
 User = get_user_model()
