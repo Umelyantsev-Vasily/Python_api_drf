@@ -14,6 +14,7 @@ from .serializers import CourseSerializer, LessonSerializer, PaymentSerializer, 
 from users.permissions import IsModerator, IsOwner, IsOwnerOrModerator
 from .paginators import MaterialsPaginator
 from .services.stripe_service import StripeService
+from .tasks import send_course_update_notification
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -44,7 +45,6 @@ class CourseViewSet(viewsets.ModelViewSet):
         serializer.save(owner=self.request.user)
 
     def get_queryset(self):
-        # Проверка для генерации схемы Swagger - избегаем ошибок с AnonymousUser
         if getattr(self, 'swagger_fake_view', False):
             return Course.objects.none()
 
@@ -52,6 +52,34 @@ class CourseViewSet(viewsets.ModelViewSet):
         if user.groups.filter(name='moderators').exists():
             return Course.objects.all()
         return Course.objects.filter(owner=user)
+
+    def update(self, request, *args, **kwargs):
+        """
+        Переопределяем метод update для отправки уведомлений
+        """
+        response = super().update(request, *args, **kwargs)
+
+        # Если обновление прошло успешно, отправляем уведомления
+        if response.status_code == status.HTTP_200_OK:
+            course_id = kwargs.get('pk')
+            # Запускаем асинхронную задачу
+            send_course_update_notification.delay(course_id)
+
+        return response
+
+    def partial_update(self, request, *args, **kwargs):
+        """
+        Переопределяем метод partial_update для отправки уведомлений
+        """
+        response = super().partial_update(request, *args, **kwargs)
+
+        # Если обновление прошло успешно, отправляем уведомления
+        if response.status_code == status.HTTP_200_OK:
+            course_id = kwargs.get('pk')
+            # Запускаем асинхронную задачу
+            send_course_update_notification.delay(course_id)
+
+        return response
 
 
 class LessonCreateAPIView(generics.CreateAPIView):
