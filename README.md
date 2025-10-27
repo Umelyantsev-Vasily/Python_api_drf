@@ -124,18 +124,16 @@ python manage.py runserver
 
 Django REST Framework project for online education platform.
 
-## Features
+## Функции
+- Аутентификация и авторизация пользователей
+- Управление курсами
+- Интеграция платежей с Stripe
+- Celery для фоновых задач
+- Redis для кэширования
+- База данных PostgreSQL
 
-- User authentication and authorization
-- Course management
-- Payment integration with Stripe
-- Celery for background tasks
-- Redis for caching
-- PostgreSQL database
-
-## Development
-
-See docker-compose setup for local development.
+## Разработка
+См. настройку docker-compose для локальной разработки.
 
 ## Лицензия:
 
