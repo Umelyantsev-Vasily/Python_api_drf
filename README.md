@@ -120,6 +120,23 @@ python manage.py runserver
 
 - DELETE /api/lessons/{id}/delete/ - удаление урока
 
+# Education Platform
+
+Django REST Framework project for online education platform.
+
+## Features
+
+- User authentication and authorization
+- Course management
+- Payment integration with Stripe
+- Celery for background tasks
+- Redis for caching
+- PostgreSQL database
+
+## Development
+
+See docker-compose setup for local development.
+
 ## Лицензия:
 
 Проект распространяется под [лицензией MIT](LICENSE)
