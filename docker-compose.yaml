@@ -3,7 +3,7 @@ services:
     image: postgres:15
     container_name: education_db
     environment:
-      POSTGRES_DB: ${DB_NAME}  # ← ИСПРАВИЛ: DM_NAME на DB_NAME
+      POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
@@ -12,7 +12,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 15s
+      interval: 10s
       timeout: 5s
       retries: 5
 
@@ -23,40 +23,20 @@ services:
       - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 15s
+      interval: 10s
       timeout: 3s
       retries: 5
 
   backend:
     build: .
     container_name: education_backend
-    command: python manage.py runserver 0.0.0.0:8000
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/app
     ports:
       - "8000:8000"
-    environment:
-      - DJANGO_SETTINGS_MODULE=config.settings
-      - DEBUG=${DEBUG}
-      - SECRET_KEY=${SECRET_KEY}
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - DATABASE_URL=${DATABASE_URL}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
-      - STRIPE_API_KEY=${STRIPE_API_KEY}
-      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
-      - EMAIL_BACKEND=${EMAIL_BACKEND}
-      - EMAIL_HOST=${EMAIL_HOST}
-      - EMAIL_PORT=${EMAIL_PORT}
-      - EMAIL_USE_TLS=${EMAIL_USE_TLS}
-      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
-      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
-      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
+    env_file:
+      - .env
     depends_on:
       db:
         condition: service_healthy
@@ -70,18 +50,8 @@ services:
     command: celery -A config worker --loglevel=info
     volumes:
       - .:/app
-    environment:
-      - DJANGO_SETTINGS_MODULE=config.settings
-      - DEBUG=${DEBUG}
-      - SECRET_KEY=${SECRET_KEY}
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_HOST=${DB_HOST}  # ← ИСПРАВИЛ: явно указал db на переменную
-      - DB_PORT=${DB_PORT}  # ← ИСПРАВИЛ: явно указал 5432 на переменную
-      - DATABASE_URL=${DATABASE_URL}  # ← ДОБАВИЛ
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}  # ← ИСПРАВИЛ: явно указал на переменную
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}  # ← ИСПРАВИЛ: явно указал на переменную
+    env_file:
+      - .env
     depends_on:
       db:
         condition: service_healthy
@@ -94,21 +64,11 @@ services:
   celery-beat:
     build: .
     container_name: education_celery_beat
-    command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: sh -c "python manage.py migrate && celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
     volumes:
       - .:/app
-    environment:
-      - DJANGO_SETTINGS_MODULE=config.settings
-      - DEBUG=${DEBUG}
-      - SECRET_KEY=${SECRET_KEY}
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_HOST=${DB_HOST}  # ← ИСПРАВИЛ: явно указал db на переменную
-      - DB_PORT=${DB_PORT}  # ← ИСПРАВИЛ: явно указал 5432 на переменную
-      - DATABASE_URL=${DATABASE_URL}  # ← ДОБАВИЛ
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}  # ← ИСПРАВИЛ: явно указал на переменную
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}  # ← ИСПРАВИЛ: явно указал на переменную
+    env_file:
+      - .env
     depends_on:
       db:
         condition: service_healthy
